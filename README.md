@@ -1,94 +1,142 @@
-# 🛠️ OpenGL & CMake Workflow Cheat Sheet
+# 🚀 Modern OpenGL C++ Starter Template
 
-This reference guide outlines the exact commands and steps required when modifying the structure of your C++ graphics project.
+A clean, high-performance starter template for modern OpenGL graphics programming utilizing **C++20**, **GLFW**, **GLAD**, and **CMake**.
+
+This repository features automated file tracking (globbing) and a streamlined `Makefile` automation layer optimized for **Neovim** development environments with `clangd`.
 
 ---
 
-## 1. Adding a New Source or Header File (`.cpp`, `.h`)
+## 🏗️ Project Architecture
 
-When you create a new file (for example, `src/Shader.cpp` or `src/Shader.h`), CMake doesn't know it exists until you explicitly add it to the compilation target.
+The workspace segregates core game/engine logic from local static vendor dependencies:
 
-1. **Update `CMakeLists.txt`**
-   Append the new file path to your `SOURCES` variable array:
+```text
+├── CMakeLists.txt         # Project build logic
+├── Makefile               # Shortcut workflow automation
+├── src/                   # Core application source tree
+│   ├── GlCommon.h         # Unified graphics configurations & wrapper
+│   └── main.cpp           # App context and main loop entry
+└── vendor/                # Vendored dependencies
+    └── glad/
+        ├── include/       # GLAD tracking headers
+        └── src/
+            └── glad.c     # Generated GLAD source mapping
+```
 
-   ```cmake
-   set(SOURCES
-       src/main.cpp
-       src/GLCommon.h
-       src/Shader.h    # <-- Add new header files here
-       src/Shader.cpp  # <-- Add new implementation files here
-       third_party/glad/src/gl.c
-   )
-   Regenerate & Link Tracking
-   Run this unified command chain in your terminal. This forces CMake to re-index the project tree and updates the compile_commands.json database file so Neovim (clangd) can map out the symbols correctly:
-   ```
+---
 
-Bash
-cmake -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON && ln -sf build/compile_commands.json .
-Refresh Neovim LSP
-Inside your active editing buffer, tell your language server provider to reload the tracking map so your screen diagnostics instantly clear:
+## 📋 Prerequisites
 
-Vim Script
-:LspRestart 2. Adding a New Third-Party System Library
-If you install a dependency globally on your machine (like adding the linear algebra library glm or an audio library via apt), update your project's configuration file:
+Ensure your system has a C++20 compiler, CMake, and the native windowing/display development headers installed.
 
-Update CMakeLists.txt
-Use pkg-config or CMake's native find_package to locate the files, and append the libraries to your linker target:
+### Ubuntu / Debian / WSL
 
-CMake
+```bash
+sudo apt update
+sudo apt install build-essential cmake pkg-config libx11-dev libxi-dev libgl1-mesa-dev libglu1-mesa-dev libxrandr-dev libxinerama-dev libxcursor-dev libglfw3-dev
+```
 
-# 1. Locate the package
+### Arch Linux
 
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(GLM REQUIRED glm) # Example package lookup
+```bash
+sudo pacman -S base-devel cmake pkgconf glfw-wayland # or glfw-x11 depending on backend
+```
 
-# 2. Link it to your executable target
+---
 
-target_link_libraries(${PROJECT_NAME} PRIVATE ${GLFW_LIBRARIES} ${GLM_LIBRARIES} ${CMAKE_DL_LIBS})
-Regenerate & Link Tracking
+## 🚀 Quick Start / Setup
 
-Bash
-cmake -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON && ln -sf build/compile_commands.json .
-Refresh Neovim LSP
+When cloning this repository or initializing a new project instance from it, follow these three steps to build, map, and run:
 
-Vim Script
-:LspRestart 3. Modifying Existing Code Only
-If you are just editing rendering math or rewriting logic inside files that are already tracked by CMake:
+### 1. Synchronize Project & IDE Tracking
 
-Compile the changes:
+Generate the local CMake build files and map out symbols for your Neovim Language Server Protocol (`clangd`):
 
-Bash
-cmake --build build
-Run the compiled application binary:
+```bash
+make sync
+```
 
-Bash
-./build/OpenGLWindow
-Note: Standard text modifications inside your source files do not require re-running your base cmake -B configuration line or restarting your Neovim LSP!
+_If you are already inside a Neovim buffer, run `:LspRestart` to instantly sync tracking metrics._
 
-1. Core Development Rules to Keep in Mind
-   Include Order Priority
-   Graphics rendering relies strictly on correct compilation ordering. GLAD definitions must load completely before GLFW window operations are called. Always ensure your centralized configuration block is placed at the absolute top of your files.
+### 2. Compile and Build
 
-Formatter Controls
-If your auto-formatting setups inside Neovim (conform.nvim / clang-format) aggressively rearrange your imports on save, explicitly lock down your configuration includes with comments:
+Compile the application executable binaries using the local cache:
 
-C++
+```bash
+make build
+```
+
+### 3. Run the Target Window
+
+Execute the built context to display the default dark blue viewport:
+
+```bash
+make run
+```
+
+> 💡 **Pro-Tip:** You can combine compilation and execution into a single inline action using:
+>
+> ```bash
+> make && make run
+> ```
+
+---
+
+## 🛠️ Daily Development Workflow
+
+Thanks to CMake automated discovery features, you **do not** need to manually add files to your build configurations when scaling your engine.
+
+### Adding a New File (`.cpp`, `.h`, `.hpp`)
+
+1. Simply create the file inside the `src/` directory (e.g., `src/Shader.cpp`).
+2. Run `make sync` in your terminal to allow the automatic discovery process to register it.
+3. Reload your buffer environment to ensure clean diagnostics.
+
+### Resetting the Project Cache
+
+If structural dependencies change drastically or you notice configuration mismatches, completely wipe out local build artifacts and start fresh:
+
+```bash
+make clean
+```
+
+---
+
+## 📝 Core Rules & Configurations
+
+### Include Order Priority
+
+Graphics rendering relies strictly on correct compilation ordering. **GLAD definitions must load completely before GLFW window operations are called.** Always ensure your centralized configuration block is placed at the absolute top of your files.
+
+### Formatter Controls
+
+If your auto-formatting setups inside Neovim (`conform.nvim` / `clang-format`) aggressively rearrange your imports on save, explicitly lock down your configuration includes with comments:
+
+```cpp
 // clang-format off
-# include "GLCommon.h"
+#include "GlCommon.h"
 // clang-format on
 
-# include <iostream>
-IWYU Headers (Include What You Use)
-To cleanly aggregate all graphics library requirements within a unified hub header while preventing clangd from generating unused import warnings inside files like main.cpp, tag your internal library references with explicit export signals:
+#include <iostream>
+```
 
-C++
-# ifndef GL_COMMON_H
-# define GL_COMMON_H
+### IWYU Headers (Include What You Use)
 
-# define GLFW_INCLUDE_NONE
-# define GLAD_GL_NO_HEADER_ONLY
+To cleanly aggregate all graphics library requirements within a unified hub header while preventing `clangd` from generating unused import warnings inside files like `main.cpp`, tag your internal library references with explicit export signals inside `src/GlCommon.h`:
 
-# include <glad/gl.h> // IWYU pragma: export
-# include <GLFW/glfw3.h> // IWYU pragma: export
+```cpp
+#ifndef GL_COMMON_H
+#define GL_COMMON_H
 
-# endif // GL_COMMON_H
+#define GLFW_INCLUDE_NONE
+#define GLAD_GL_NO_HEADER_ONLY
+
+#include <glad/glad.h>   // IWYU pragma: export
+#include <GLFW/glfw3.h> // IWYU pragma: export
+
+#endif // GL_COMMON_H
+```
+
+```
+
+```
