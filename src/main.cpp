@@ -1,39 +1,35 @@
 #include "GlCommon.h"
+#include "Window.h"
+#include "glad/glad.h"
 
 #include <iostream>
 
-void framebuffer_size_callback(GLFWwindow *window, int width, int height);
-void processInput(GLFWwindow *window);
-
-// settings
 const unsigned int SCR_WIDTH = 800;
-const unsigned int SCR_HEIGHT = 600;
+const unsigned int SCR_HEIGHT = 800;
+const std::string APP_NAME = "Game Engine";
+
+// const char *vertexShaderSource =
+//     "#version 330 core\n"
+//     "layout (location = 0) in vec3 aPos;\n"
+//     "void main()\n"
+//     "{\n"
+//     "   gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n"
+//     "}\0";
+//
+// const char *fragmentShaderSource = "#version 330 core\n"
+//     "out vec4 FragColor;\n"
+//     "void main()\n"
+//     "{\n"
+//     "   FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);\n"
+//     "}\n\0";
+//
 
 int main()
 {
-    // glfw: initialize and configure
-    // ------------------------------
-    glfwInit();
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    Window window(SCR_WIDTH, SCR_HEIGHT, APP_NAME);
 
-#ifdef __APPLE__
-    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
-#endif
-
-    // glfw window creation
-    // --------------------
-    GLFWwindow *window =
-        glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", NULL, NULL);
-    if (window == NULL)
-    {
-        std::cout << "Failed to create GLFW window" << std::endl;
-        glfwTerminate();
+    if (window.Init() != 0)
         return -1;
-    }
-    glfwMakeContextCurrent(window);
-    glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
     // glad: load all OpenGL function pointers
     // ---------------------------------------
@@ -43,43 +39,94 @@ int main()
         return -1;
     }
 
-    // render loop
-    // -----------
-    while (!glfwWindowShouldClose(window))
-    {
-        // input
-        // -----
-        processInput(window);
+    window.SetResizeCallback([](int width, int height)
+                             { glViewport(0, 0, width, height); });
+    window.SetInputCallback(
+        [&window](Engine::Key key, int scancode, Engine::Action action,
+                  int mods)
+        {
+            if (key == Engine::Key::Escape && action == Engine::Action::Press)
+            {
+                window.Quit();
+            }
+        });
 
-        // glfw: swap buffers and poll IO events (keys pressed/released, mouse
-        // moved etc.)
-        // -------------------------------------------------------------------------------
-        glfwSwapBuffers(window);
-        glfwPollEvents();
+    // Scale the actual viewport size on startup
+    glViewport(0, 0, window.Width(), window.Height());
+
+    GLfloat verts[] = {0.0f, 0.0f,  1.0f,  1.0f, -1.0f,
+                       1.0f, -1.0f, -1.0f, 1.0f, -1.0f};
+
+    GLushort indices[] = {0, 1, 2, 0, 3, 4};
+
+    // unsigned int vertexShader;
+    // vertexShader = glCreateShader(GL_VERTEX_SHADER);
+    //
+    // glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
+    // glCompileShader(vertexShader);
+    // int success;
+    // char infoLog[512];
+    // glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
+    // if (!success)
+    // {
+    //     glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
+    //     std::cout << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n"
+    //               << infoLog << std::endl;
+    // }
+    //
+    // unsigned int fragmentShader;
+    // fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+    // glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
+    // glCompileShader(fragmentShader);
+    //
+    // unsigned int shaderProgram;
+    // shaderProgram = glCreateProgram();
+    //
+    // glAttachShader(shaderProgram, vertexShader);
+    // glAttachShader(shaderProgram, fragmentShader);
+    // glLinkProgram(shaderProgram);
+    //
+    // // glUseProgram(shaderProgram);
+    //
+    // glDeleteShader(vertexShader);
+    // glDeleteShader(fragmentShader);
+
+    // Create the buffer
+    GLuint VBO, VAO;
+    glGenVertexArrays(1, &VAO);
+    glGenBuffers(1, &VBO);
+    glBindVertexArray(VAO);
+    // Bind the buffer to the array buffer binding point
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    // Copy the data down to the array buffer which has myBuffer assisgned to
+    // it; sends it to the graphics card
+    glBufferData(GL_ARRAY_BUFFER, sizeof(verts), verts, GL_STATIC_DRAW);
+
+    // Create element buffer
+    GLuint indexBufferId;
+    glGenBuffers(1, &indexBufferId);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBufferId);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices,
+                 GL_STATIC_DRAW);
+
+    // Describe the data to opengl
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, 0);
+
+    while (window.Running())
+    {
+        window.StartFrame();
+
+        // Render pass
+        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT); // glfw: swap buffers and poll IO
+
+        glBindVertexArray(VAO);
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
+
+        // End render pass
+        window.EndFrame();
     }
 
-    // glfw: terminate, clearing all previously allocated GLFW resources.
-    // ------------------------------------------------------------------
-    glfwTerminate();
     return 0;
-}
-
-// process all input: query GLFW whether relevant keys are pressed/released this
-// frame and react accordingly
-// ---------------------------------------------------------------------------------------------------------
-void processInput(GLFWwindow *window)
-{
-    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-        glfwSetWindowShouldClose(window, true);
-}
-
-// glfw: whenever the window size changed (by OS or user resize) this callback
-// function executes
-// ---------------------------------------------------------------------------------------------
-void framebuffer_size_callback(GLFWwindow *window, int width, int height)
-{
-    // make sure the viewport matches the new window dimensions; note that width
-    // and height will be significantly larger than specified on retina
-    // displays.
-    glViewport(0, 0, width, height);
 }

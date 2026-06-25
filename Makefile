@@ -16,7 +16,7 @@ build:
 
 # 3. Execute the binary target
 run:
-	@./build/OpenGLWindow
+	@./build/App
 
 # 4. Wipe out the cache directories if things get weird
 clean:
